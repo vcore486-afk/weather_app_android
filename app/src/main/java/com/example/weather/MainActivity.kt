@@ -27,7 +27,11 @@ class MainActivity : AppCompatActivity() {
         "Челябинск" to 1508291,
         "Самара" to 499099,
         "Омск" to 1496153,
-        "Ростов-на-Дону" to 501175
+        "Ростов-на-Дон" to 501175,
+        "Рим" to 3169070,
+        "Токио" to 1850147,
+        "Глазго" to 2648579,
+        "Нью-Йорк" to 5128581
     )
 
     private lateinit var tempViews: Map<String, TextView>
@@ -47,7 +51,11 @@ class MainActivity : AppCompatActivity() {
             "Челябинск" to findViewById(R.id.chelyabinsk_temp),
             "Самара" to findViewById(R.id.samara_temp),
             "Омск" to findViewById(R.id.omsk_temp),
-            "Ростов-на-Дону" to findViewById(R.id.rostov_temp)
+            "Ростов-на-Дону" to findViewById(R.id.rostov_temp),
+            "Рим" to findViewById(R.id.roma_temp),
+            "Нью-Йорк" to findViewById(R.id.ny_temp),
+            "Токио" to findViewById(R.id.tokyo_temp),
+            "Глазго" to findViewById(R.id.glasgow_temp),
         )
 
         // Кнопка обновления
