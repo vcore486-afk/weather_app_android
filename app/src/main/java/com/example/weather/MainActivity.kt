@@ -3,13 +3,15 @@ package com.example.weather
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
@@ -17,65 +19,50 @@ class MainActivity : AppCompatActivity() {
     private val apiKey = "9cabf88b4c9c983d726a820860e3a5b6"
     private val TAG = "WeatherApp"
 
-    private val cityIds = mapOf(
-        "Москва" to 524901,
-        "Санкт-Петербург" to 498817,
-        "Новосибирск" to 1496747,
-        "Екатеринбург" to 1486209,
-        "Казань" to 551487,
-        "Нижний Новгород" to 520555,
-        "Челябинск" to 1508291,
-        "Самара" to 499099,
-        "Омск" to 1496153,
-        "Ростов-на-Дон" to 501175,
-        "Рим" to 3169070,
-        "Токио" to 1850147,
-        "Глазго" to 2648579,
-        "Нью-Йорк" to 5128581
-    )
-
-    private lateinit var tempViews: Map<String, TextView>
+    private lateinit var cities: MutableList<City>
+    private lateinit var adapter: CityAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Сопоставление города с TextView
-        tempViews = mapOf(
-            "Москва" to findViewById(R.id.moscow_temp),
-            "Санкт-Петербург" to findViewById(R.id.spb_temp),
-            "Новосибирск" to findViewById(R.id.novosib_temp),
-            "Екатеринбург" to findViewById(R.id.ekb_temp),
-            "Казань" to findViewById(R.id.kazan_temp),
-            "Нижний Новгород" to findViewById(R.id.nn_temp),
-            "Челябинск" to findViewById(R.id.chelyabinsk_temp),
-            "Самара" to findViewById(R.id.samara_temp),
-            "Омск" to findViewById(R.id.omsk_temp),
-            "Ростов-на-Дону" to findViewById(R.id.rostov_temp),
-            "Рим" to findViewById(R.id.roma_temp),
-            "Нью-Йорк" to findViewById(R.id.ny_temp),
-            "Токио" to findViewById(R.id.tokyo_temp),
-            "Глазго" to findViewById(R.id.glasgow_temp),
-        )
+        cities = loadCitiesFromAssets().toMutableList()
 
-        // Кнопка обновления
-        val btnUpdate: Button = findViewById(R.id.btn_update)
-        btnUpdate.setOnClickListener {
-            Log.d(TAG, "Нажата кнопка обновления температуры")
+        adapter = CityAdapter(cities)
+
+        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = adapter
+
+        findViewById<Button>(R.id.btn_update).setOnClickListener {
             updateAllTemperatures()
         }
 
-        // Первичное обновление при запуске
         updateAllTemperatures()
+    }
+    private fun loadCitiesFromAssets(): List<City> {
+        return try {
+            val json = assets.open("cities.json")
+                .bufferedReader()
+                .use { it.readText() }
+
+            val array = JSONArray(json)
+            List(array.length()) { i ->
+                val obj = array.getJSONObject(i)
+                City(obj.getString("name"), obj.getInt("id"))
+            }
+        } catch (e: Exception) {
+            Log.e("WeatherApp", "cities.json not found", e)
+            emptyList()
+        }
     }
 
     private fun updateAllTemperatures() {
-        for ((city, id) in cityIds) {
-            Log.d(TAG, "Запрос температуры для города: $city (ID=$id)")
-            fetchTemperature(id) { temp ->
-                Log.d(TAG, "Получена температура для $city: $temp°C")
+        for ((index, city) in cities.withIndex()) {
+            fetchTemperature(city.id) { temp ->
                 runOnUiThread {
-                    tempViews[city]?.text = "$temp°C"
+                    cities[index].temperature = temp
+                    adapter.notifyItemChanged(index)
                 }
             }
         }
@@ -84,17 +71,14 @@ class MainActivity : AppCompatActivity() {
     private fun fetchTemperature(cityId: Int, callback: (Double) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val client = OkHttpClient()
                 val url =
                     "https://api.openweathermap.org/data/2.5/weather?id=$cityId&appid=$apiKey&units=metric"
                 val request = Request.Builder().url(url).build()
-                val response = client.newCall(request).execute()
+                val response = OkHttpClient().newCall(request).execute()
                 val json = JSONObject(response.body!!.string())
-                val temp = json.getJSONObject("main").getDouble("temp")
-                Log.d(TAG, "Ответ от сервера для ID=$cityId: $temp°C")
-                callback(temp)
+                callback(json.getJSONObject("main").getDouble("temp"))
             } catch (e: Exception) {
-                Log.e(TAG, "Ошибка при получении температуры для ID=$cityId", e)
+                Log.e(TAG, "Ошибка загрузки погоды", e)
             }
         }
     }
