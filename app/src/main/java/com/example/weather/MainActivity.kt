@@ -16,15 +16,21 @@ import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
-    private val apiKey = "9cabf88b4c9c983d726a820860e3a5b6"
     private val TAG = "WeatherApp"
-
+    private lateinit var apiKey: String
     private lateinit var cities: MutableList<City>
     private lateinit var adapter: CityAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        apiKey = loadApiKeyFromAssets()
+
+        if (apiKey.isEmpty()) {
+            Log.e(TAG, "API key is empty! Check api_key.txt")
+            return
+        }
 
         cities = loadCitiesFromAssets().toMutableList()
 
@@ -40,6 +46,16 @@ class MainActivity : AppCompatActivity() {
 
         updateAllTemperatures()
     }
+
+    private fun loadApiKeyFromAssets(): String {
+        return try {
+            assets.open("api_key.txt").bufferedReader().use { it.readText().trim() }
+        } catch (e: Exception) {
+            Log.e(TAG, "api_key.txt not found", e)
+            ""
+        }
+    }
+
     private fun loadCitiesFromAssets(): List<City> {
         return try {
             val json = assets.open("cities.json")
